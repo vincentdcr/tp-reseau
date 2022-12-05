@@ -1,6 +1,7 @@
 
 OBJ1 = client.o 
-OBJ2 = serveur.o 
+OBJ2 = serveur.o
+OBJ3 = types.o  
 OPTIONS	=
 # Adaptation a Darwin / MacOS X avec fink
 # Du fait de l'absence de libtermcap on se fait pas mal
@@ -29,10 +30,13 @@ OPTIONS	+= -ltermcap  -lsocket -lnsl
 CFLAGS	+= -I..
 endif
 
-EXEC = ${OBJ1} client ${OBJ2} serveur
+EXEC = ${OBJ1} client ${OBJ2} serveur ${OBJ3}
 all: ${EXEC} 	
 
 #-DDEBUG
+
+types.o : types.c types.h
+	gcc  $(CFLAGS) -c  types.c	
 
 client.o : client.c 
 	gcc  $(CFLAGS) -c  client.c	
@@ -43,8 +47,8 @@ serveur.o : serveur.c
 client : ${OBJ1}	
 	gcc $(LFLAGS) ${OBJ1} -o client -lcurses   $(OPTIONS)
 
-serveur : ${OBJ2}	
-	gcc $(LFLAGS) ${OBJ2} -o serveur -lcurses   $(OPTIONS)
+serveur : ${OBJ2} ${OBJ3}	
+	gcc $(LFLAGS) ${OBJ2} ${OBJ3} -o serveur -lcurses   $(OPTIONS)
 
 
 

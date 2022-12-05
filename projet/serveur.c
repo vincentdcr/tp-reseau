@@ -26,6 +26,8 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include  <sys/time.h>
+#include "types.h"
 
 
 #define SERVICE_DEFAUT "9999"
@@ -33,11 +35,6 @@
 #define STDIN 0 // Standard input (stdin)
 #define BUFFER_SIZE 80
 
-#define DICO_NB_MOTS 30
-char dico[DICO_NB_MOTS][16] = { "CIBLE", "PARAGRAPHE", "POTABLE", "VIVANT", "PUZZLE", "CARTOGRAPHIE", "BRASSE", 
-"REPTILE", "NORD", "COCCINELLE", "ETAT", "PERSIL", "CIMENT", "BANANE", "MINIGOLF", "VOITURE", "RECHERCHE",
-"TRAPPE", "MAGASIN", "PROGRAMME", "PENDU", "SOMMEIL", "AIMANT", "PERPENDICULAIRE", "PERDU", "MUSICIEN", "DOS",
-"PORTABLE", "GOUDRON", "PASTIS" };
 
 void serveur_appli(char *service); /* programme serveur */
 
@@ -70,47 +67,6 @@ int main(int argc, char *argv[])
 }
 
 
-/*Fct booleenne pour savoir si on a gagne et donc sortir de la boucle de jeu
-(une des conditions pour savoir si gagne et d'avoir "decouvert" ts les caracteres du mot a chercher)
-@param : word
-@res : booleen FAUX pour sortir de la boucle de jeu*/
-int isWin(char *wd) {
-	for(int i=0; i<strlen(wd); i++) {
-		if(wd[i]=='_') 
-			return 1;
-	}
-	return 0;		
-}
-
-/*Fct pour changer l'etat de decouverte des caracteres dans la chaine transmise au client
-@param : caractere a mettre a jour, chaine/mot (pr verif si car dans mot), chaine transmise
-@res : pas de retour, on met a jour la chaine en mem*/
-void is_char_in_word(char c, char * wd, char* word_display) {
-	for (int i=0; i<strlen(wd); i++) {
-		if (wd[i]==c)
-			word_display[i]=c;
-	}
-}
-
-/*Fct pour verif si la lettre fait partie de l'alphabet latin et si elle n'a pas deja ete testee
-@param : liste des lettres testees, lettre a verifier, nombre de lettres testees (donc deja dans la liste)
-@res : pas de retour, on met a jour la chaine en mem*/
-int is_char_new(char *list_of_letter, char letter, int * index_last_letter) {
-	if (letter<'A' || letter>'Z')
-		return 0;
-	for(int i=0; i<*index_last_letter; i++) {
-		// le caractere n'est pas nouveau si on le trouve dans la liste
-		if (list_of_letter[i]==letter) {
-			return 0;
-		}
-	}
-	//le caractere est nouveau, on le rajoute a la liste et on renvoit vrai
-	list_of_letter[*index_last_letter]=letter;
-	(*index_last_letter)++;
-	return 1;
-
-}
-
 /*Fct pour completer le buffer et l'emmener jusqu'a une taille fixe de BUFFER_SIZE caracteres pour toujours envoyer un paquet de meme taille
 @param : chaine contenant les infos a transmettre (taille < BUFFER_SIZE)
 @res : chaine de BUFFER_SIZE caracteres a transmettre*/
@@ -133,133 +89,103 @@ void serveur_appli(char *service)
 
 {
 	//===== Etablissement connexion ======
-
 	//création d'une socket
 	int IDsocket_passif = socket(AF_INET, SOCK_STREAM,IPPROTO_TCP);
+	setsockopt(IDsocket_passif, SOL_SOCKET ,SO_REUSEADDR, "1", 1);
 	struct sockaddr_in p_adr_socket;
-	struct sockaddr_in peer_addr;
  	p_adr_socket.sin_family = AF_INET;
 	p_adr_socket.sin_port = htons(atoi(service));
 	p_adr_socket.sin_addr.s_addr = INADDR_ANY;
 
 	//association socket avec num socket du serveur
-	int b = bind(IDsocket_passif, (struct sockaddr *) &p_adr_socket, sizeof(p_adr_socket) );
-		if (b==0)
-			printf("binded\n");
-		else
-			printf(":( %d\n", b);
+	if ( bind(IDsocket_passif, (struct sockaddr *) &p_adr_socket, sizeof(p_adr_socket) ) < 0 )
+        {
+          perror ("bind");
+          exit (EXIT_FAILURE);
+        }
 	//serveur en attente d'1 connexion
-	int l = listen(IDsocket_passif, 1);
-		if (l==0)
-			printf("listened\n");
-		else
-			printf(":( %d\n", l);
+	if ( listen(IDsocket_passif, 1) < 0 )
+        {
+          perror ("listen");
+          exit (EXIT_FAILURE);
+        }
  
-	//on accepte requête entrante et on définit un num de socket associé au client
-	printf("test avant accept %d %d %s\n", p_adr_socket.sin_family, p_adr_socket.sin_port, p_adr_socket.sin_zero);
-	socklen_t addr_size = sizeof(struct sockaddr_in);
-	int IDsocket_client = accept(IDsocket_passif,NULL, NULL );
 
-	printf ("test serveur %d\n", IDsocket_client);
-    //===== Jeu du pendu (comm. client/serveur) =====
+	/* Initialize the set of active sockets. */
+	fd_set active_fd_set, read_fd_set;
+  	FD_ZERO (&active_fd_set);
+  	FD_SET (IDsocket_passif, &active_fd_set);	
 
-	// init generateur aleatoire
-	srand(clock());
+    //===== Flash (comm. client/serveur) =====
 
 	char * buffer = malloc(sizeof(char)*BUFFER_SIZE);
-	// permet de rejouer tant que l'utilisateur le veut
 	int Flag = 1;
+	liste_client listeClients = creer_liste_client();
+	liste_message listeMsg = creer_liste_messages(); 
 
 	while (Flag)
-	{
-
-		// choix du mot a trouver
-		int nrand = rand() % DICO_NB_MOTS;
-		char *wd_to_find = dico[nrand];
-
-		int size_wd = strlen(wd_to_find);
-		//init du mot pour l'affichage client et déterminer la victoire
-		char * word_display=malloc(sizeof(char)*size_wd);
-		for (int i=0; i<size_wd; i++) 
-			word_display[i]='_';
-
-		//init liste lettres déjà entrées
-		char list_of_letter[26];
-		int index_last_letter = 0;
-
-		//on envoit tjs un msg de BUFFER_SIZE octets
-		write(IDsocket_client,completemsg("Bienvenue dans le jeu du pendu\nNiveau de la partie (1 facile, 4 extrême)?"), BUFFER_SIZE);
-
-		//choix du niveau
-
-		read(IDsocket_client, buffer, 1);
-		int niveau_partie = atoi(buffer);
-		//on boucle tant qu'on a pas un niveau attendu
-		while(niveau_partie<1 || niveau_partie>4)	{
-			write(IDsocket_client,completemsg("Rentrez 1, 2, 3 ou 4 :"),BUFFER_SIZE);
-			read(IDsocket_client, buffer, 1);
-			niveau_partie = atoi(buffer);
-			printf("Niveau : %d\n", niveau_partie);
-		}
-
-		//Affichage serveur du niveau choisi
-		printf("Niveau : %d\n", niveau_partie);
-		//Affichage serveur du mot
-		printf("Mot à chercher : %s\n", wd_to_find);
-
-		//nombre d'essais pour trouver le mot
-		int nb_tries;
-		if (niveau_partie==1)
-			nb_tries = (2 * size_wd) ;
-		else if (niveau_partie==2)
-			nb_tries = (1.6f * (float) size_wd) ;	
-		else if (niveau_partie==3)
-			nb_tries = (1.3f * (float) size_wd) ;
-		else 
-			nb_tries = size_wd;
-
-		// boucle de jeu : on en sort si on gagne ou si on a epuise ts nos essais
-		while (nb_tries > 0 && isWin(word_display))
-		{
-			//on génère dans le buffer la phrase qu'on va envoyer 
-			sprintf(buffer, "Vous avez %d essais pour trouver le mot.\n%s", nb_tries, word_display);
-			write(IDsocket_client,completemsg(buffer), BUFFER_SIZE);
-			
-			//reception d'une lettre pour le pendu
-			read(IDsocket_client,buffer,1);
-			while (!is_char_new(list_of_letter,buffer[0],&index_last_letter)) { // si pas une lettre / déjà essayé on redemande ss consommer un essai
-				sprintf(buffer, "Vous avez déjà essayé %c (ou caractère invalide)", buffer[0]);
-				write(IDsocket_client,completemsg(buffer), BUFFER_SIZE);
-				//reception d'une lettre pour le pendu
-				read(IDsocket_client, buffer, 1);
-			}
-			is_char_in_word(buffer[0], wd_to_find, word_display); //on modifie le mot afficher au client si la lettre reçue est dedans
-			nb_tries--;
-		}
-
-
-		if (!isWin(word_display)) { // aff msg d'echec/reussite en fct de la decouverte ou non du mot
-			sprintf(buffer, "Bravo vous avez gagné ! Le mot était : %s.\nVoulez-vous rejouer ? (1/0)",wd_to_find);
-			write(IDsocket_client,completemsg(buffer), BUFFER_SIZE);
-		} else {
-			sprintf(buffer, "Dommage, c'est perdu ! Le mot était : %s.\nVoulez-vous rejouer ? (1/0)", wd_to_find);
-			write(IDsocket_client,completemsg(buffer), BUFFER_SIZE);			
-		}
-
-		// relancer une partie
-		read(IDsocket_client,buffer,1);
-		while (buffer[0] != '1' && buffer[0] != '0')
-		{
-			write(IDsocket_client,completemsg("Rentrez 1/0 :"),BUFFER_SIZE);
-			read(IDsocket_client, buffer, 1);
-		}
-		if (buffer[0]== '0')
-			Flag = 0; //on sort de la boucle principale
-	}
-
+    {
+      /* Block until input arrives on one or more active sockets. */
+      read_fd_set = active_fd_set;
+      if (select (FD_SETSIZE, &read_fd_set, NULL, NULL, NULL) < 0)
+        {
+          perror ("select");
+          exit (EXIT_FAILURE);
+        }
+      /* Service all the sockets with input pending. */
+      for (int i = 0; i < FD_SETSIZE; ++i)
+        if (FD_ISSET (i, &read_fd_set))
+          {
+            if (i == IDsocket_passif)
+              {
+                /* Connection request on original socket. */
+				printf("test serveur\n");
+                int IDsocket_client = accept(IDsocket_passif,NULL, NULL );
+                if (IDsocket_client < 0)
+                  {
+                    perror ("accept");
+                    exit (EXIT_FAILURE);
+                  }
+                FD_SET (IDsocket_client, &active_fd_set);
+				write(IDsocket_client,"Enter command (a,d,l,m,n,h,q) :", 32);
+              }
+            else
+              {
+  				if (read (i, buffer, BUFFER_SIZE) < 0)
+    			{
+      				/* Read error. */
+      				perror ("read");
+      				exit (EXIT_FAILURE);
+    			}
+				/* Data read. */
+      			printf ("Server: got message: '%s'\n", buffer);
+  				switch (buffer[0]) {
+					case 'a':
+						break;
+					case 'd':
+						break;
+					case 'l':
+						break;
+					case 'm':
+						break;
+					case 'n':
+						break;
+					case 'h':
+						break;
+					case 'q':	
+						close(i);
+						FD_CLR (i, &active_fd_set);
+    					Flag = 0;
+						break;
+				}
+				write(i,"Enter command (a,d,l,m,n,h,q) :", 32);
+              }
+          }
+    }
+	
     /*===== Fermeture de la connexion =====*/
-	close(IDsocket_client);
 	close(IDsocket_passif);
+	FD_CLR (IDsocket_passif, &active_fd_set);
 }
 
 /******************************************************************************/

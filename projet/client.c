@@ -24,6 +24,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <unistd.h>
+#include  <sys/time.h>
 
 #define SERVICE_DEFAUT "9999"
 #define SERVEUR_DEFAUT "127.0.0.1"
@@ -86,25 +87,51 @@ void client_appli (char *serveur,char *service)
     p_adr_socket.sin_port = htons(atoi(service)); // use some unused port number
     p_adr_socket.sin_addr.s_addr = INADDR_ANY;
 	// Demande de connexion au serveur
-    connect(id_client_socket, (struct sockaddr *) &p_adr_socket, sizeof(p_adr_socket));
+    if (connect(id_client_socket, (struct sockaddr *) &p_adr_socket, sizeof(p_adr_socket)) < 0 ) 
+    {
+        perror ("connect");
+        exit (EXIT_FAILURE);
+    }
     /*===== Service msg Flash (comm. client/serveur) =====*/
 
+	/* Initialize the set of active sockets. */
+	fd_set active_fd_set, read_fd_set, write_fd_set;
+  	FD_ZERO (&active_fd_set);
+  	FD_SET (id_client_socket, &active_fd_set);	
+
     char *read_server =malloc(sizeof(char)*BUFFER_SIZE);
-    char *read_client =malloc(sizeof(char)*10);
+    char *read_client =malloc(sizeof(char)*22);
 	read_client[0] = '1';
-    while (read_client[0] != '0') {
-		//reception d'une chaine de 800 caracteres depuis le serveur (et affichage)
-        read(id_client_socket, read_server, 80);
-        printf("%s", read_server);
-		//envoi d'UN caractere en majuscule au serveur (les autres sur la ligne = ignorés)
-        scanf("%s", read_client);
-        read_client[0] = toupper(read_client[0]);
-		printf("avant write\n");
-        write(id_client_socket, read_client, 1);
-		printf("test %c\n", read_client[0]);
+	while (read_client[0] != 'q')
+    {
+      /* Block until input arrives on one or more active sockets. */
+      read_fd_set = active_fd_set;
+	  write_fd_set = active_fd_set;
+      if (select (FD_SETSIZE, &read_fd_set, NULL, NULL, NULL) < 0)
+        {
+          perror ("select");
+          exit (EXIT_FAILURE);
+        }
+      /* Service all the sockets with input pending. */
+      for (int i = 0; i < FD_SETSIZE; ++i)
+        if (FD_ISSET (i, &read_fd_set))
+          {
+  			if (read (i, read_server, BUFFER_SIZE) < 0)
+    			{
+      				/* Read error. */
+      				perror ("read");
+      				exit (EXIT_FAILURE);
+    			}
+			/* Data read. */
+      		printf ("%s\n", read_server);
+        	scanf("%s", read_client);
+        	write(id_client_socket, read_client, 22);
+         }
+    
     }
 
     /*===== Fermeture de la connexion =====*/
+	FD_CLR(id_client_socket, &active_fd_set);
     close(id_client_socket);
 }
 
