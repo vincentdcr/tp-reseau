@@ -11,7 +11,7 @@
 /*									      									  */
 /******************************************************************************/
 
-
+  
 #include <stdio.h>
 #include <curses.h> 		/* Primitives de gestion d'ecran */
 #include <sys/signal.h>
@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include  <sys/time.h>
 
-#define SERVICE_DEFAUT "9999"
+#define SERVICE_DEFAUT "9998"
 #define SERVEUR_DEFAUT "127.0.0.1"
 #define BUFFER_SIZE 800
 

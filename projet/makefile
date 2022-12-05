@@ -39,16 +39,16 @@ types.o : types.c types.h
 	gcc  $(CFLAGS) -c  types.c	
 
 client.o : client.c 
-	gcc  $(CFLAGS) -c  client.c	
+	gcc -g  $(CFLAGS) -c  client.c	
 
 serveur.o : serveur.c 
-	gcc  $(CFLAGS) -c  serveur.c	
+	gcc -g $(CFLAGS) -c  serveur.c	
 
 client : ${OBJ1}	
-	gcc $(LFLAGS) ${OBJ1} -o client -lcurses   $(OPTIONS)
+	gcc -g $(LFLAGS) ${OBJ1} -o client -lcurses   $(OPTIONS)
 
 serveur : ${OBJ2} ${OBJ3}	
-	gcc $(LFLAGS) ${OBJ2} ${OBJ3} -o serveur -lcurses   $(OPTIONS)
+	gcc -g $(LFLAGS) ${OBJ2} ${OBJ3} -o serveur -lcurses   $(OPTIONS)
 
 
 

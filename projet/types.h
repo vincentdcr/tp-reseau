@@ -1,3 +1,5 @@
+#include <netinet/in.h>
+
 //Type message et une liste chainee de messages
 
 typedef struct {
@@ -17,7 +19,7 @@ typedef struct liste_message_s {
 typedef struct {
     char* pseudo; /* 6 max */
     long derniereDeconnexion;
-    int port; // IP ?
+    struct sockaddr_in addr; // IP ?
     struct liste_client_s* abonnements;
     struct liste_client_s* abonnes;
 } client_s, *client;
@@ -39,11 +41,13 @@ void writeNewMsg(liste_message listeMsg, int idSocket, char* auteur, long date )
 
 liste_client creer_liste_client ();
 
-client newClient(int port, char* pseudo) ;
+void newClient(struct sockaddr_in adresse, char* pseudo, client client) ;
 
-void insertListeClient (liste_client listeClient, client c ) ;
+liste_client insertListeClient (liste_client listeClient, client c ) ;
 
 client findClient(liste_client listeClient, char* pseudo );
+
+client findClientfromAddr(liste_client listeClient, struct sockaddr_in adresse ) ;
 
 liste_client findSubscribers(liste_client listeClient, char* pseudo ) ;
 

@@ -54,23 +54,20 @@ liste_client creer_liste_client ()
 {
     return malloc(sizeof(liste_client_s));
 } 
-
-client newClient(int port, char* pseudo) {
-    client c= malloc(sizeof(client));
-    c->abonnements = NULL;
+ 
+void newClient(struct sockaddr_in adresse, char* pseudo, client c) {
+    c->abonnements = NULL; 
     c->abonnes = NULL;
-    c->derniereDeconnexion = 0;
-    c->port = port ;
+    c->derniereDeconnexion = 0; 
+    c->addr = adresse ;
     c->pseudo = pseudo;
-    return c;
 }
 
-void insertListeClient (liste_client listeClient, client c ) {
+liste_client insertListeClient (liste_client listeClient, client c ) {
     liste_client newhead = malloc(sizeof(liste_client));
     newhead->cl = c;
     newhead->prochain = listeClient;
-    listeClient = newhead;
-    return;
+    return newhead;
 }
 
 client findClient(liste_client listeClient, char* pseudo ) {
@@ -84,6 +81,20 @@ client findClient(liste_client listeClient, char* pseudo ) {
    }
    return NULL;
 }
+
+client findClientfromAddr(liste_client listeClient, struct sockaddr_in adresse ) {
+   //start from the beginning
+   while(listeClient != NULL) {
+    client personne = listeClient->cl;
+    printf("find : %s\n", personne->pseudo);
+    if (personne->addr.sin_addr.s_addr == adresse.sin_addr.s_addr) {
+        return personne;
+    }
+    listeClient = listeClient->prochain;
+   }
+   return NULL;
+}
+
 
 liste_client findSubscribers(liste_client listeClient, char* pseudo ) {
    //start from the beginning

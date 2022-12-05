@@ -30,7 +30,7 @@
 #include "types.h"
 
 
-#define SERVICE_DEFAUT "9999"
+#define SERVICE_DEFAUT "9998"
 
 #define STDIN 0 // Standard input (stdin)
 #define BUFFER_SIZE 80
@@ -120,8 +120,8 @@ void serveur_appli(char *service)
 
 	char * buffer = malloc(sizeof(char)*BUFFER_SIZE);
 	int Flag = 1;
-	liste_client listeClients = creer_liste_client();
-	liste_message listeMsg = creer_liste_messages(); 
+	liste_client listeClients = NULL;
+	liste_message listeMsg = NULL; 
 
 	while (Flag)
     {
@@ -131,22 +131,38 @@ void serveur_appli(char *service)
         {
           perror ("select");
           exit (EXIT_FAILURE);
-        }
+        } 
       /* Service all the sockets with input pending. */
       for (int i = 0; i < FD_SETSIZE; ++i)
         if (FD_ISSET (i, &read_fd_set))
           {
             if (i == IDsocket_passif)
-              {
+              { 
                 /* Connection request on original socket. */
-				printf("test serveur\n");
-                int IDsocket_client = accept(IDsocket_passif,NULL, NULL );
+				struct sockaddr_in addr_client;
+				socklen_t addr_client_size = sizeof(addr_client);
+                int IDsocket_client = accept(IDsocket_passif,(struct sockaddr *) &addr_client, &addr_client_size );
                 if (IDsocket_client < 0)
                   {
                     perror ("accept");
                     exit (EXIT_FAILURE);
                   }
                 FD_SET (IDsocket_client, &active_fd_set);
+				client c = findClientfromAddr(listeClients, addr_client);
+				if (c == NULL) 
+				{
+					write(IDsocket_client,"Enter pseudo (max 6 chars)", 27);
+  					if (/*size = */read (IDsocket_client, buffer, 6) < 0)
+    				{
+      					/* Read error. */
+      					perror ("read");
+      					exit (EXIT_FAILURE);
+    				}
+					char pseudo[6];
+					strcpy(pseudo, buffer);
+					client_s client = { pseudo, 0, addr_client, NULL, NULL};
+					listeClients = insertListeClient(listeClients, &client);
+				}
 				write(IDsocket_client,"Enter command (a,d,l,m,n,h,q) :", 32);
               }
             else
@@ -175,8 +191,8 @@ void serveur_appli(char *service)
 					case 'q':	
 						close(i);
 						FD_CLR (i, &active_fd_set);
-    					Flag = 0;
-						break;
+    					//Flag = 0;
+						//break;
 				}
 				write(i,"Enter command (a,d,l,m,n,h,q) :", 32);
               }
