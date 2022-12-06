@@ -26,12 +26,11 @@ message newMessage(char* content, int length, long date, char* author) {
     return m;
 }
 
-void insertListeMsg (liste_message listeMsg, message msg ) {
+liste_message insertListeMsg (liste_message listeMsg, message msg ) {
     liste_message newhead = malloc(sizeof(liste_message));
     newhead->me = msg;
     newhead->prochain = listeMsg;
-    listeMsg = newhead;
-    return;
+    return newhead; 
 }
 
 
@@ -133,7 +132,79 @@ char** getNamesFromListeClient(liste_client liste) {
 } 
 
 //tester si les deux existent AVANT
-void addSubscription (client c_follower, client c_following) {
-    insertListeClient( c_follower->abonnements, c_following);
-    insertListeClient( c_following->abonnements, c_follower);
+void addSubscription (client* c_follower, client* c_following) {
+    liste_client newhead = malloc(sizeof(liste_client));
+    newhead->cl = *c_follower;
+    newhead->prochain = (*c_following)->abonnes;
+    (*c_following)->abonnes = newhead;
+    liste_client newhead2 = malloc(sizeof(liste_client));
+    newhead2->cl = (*c_following);
+    newhead2->prochain = (*c_follower)->abonnements;
+    (*c_follower)->abonnements = newhead2;
+}
+
+void rmClient(liste_client *listeptr, client c) {
+   liste_client liste = *listeptr;
+   liste_client previousEntry = NULL;
+   while(liste != NULL) {
+    client personne = liste->cl;
+    if (previousEntry != NULL && liste->cl == c) {
+        previousEntry->prochain = liste->prochain;
+        free(liste);
+        break;
+    } else if (liste->cl == c) {
+        *listeptr = liste->prochain;
+        free(liste);
+        break;
+
+    }
+    previousEntry = liste;
+    liste = liste->prochain;
+   }
+   return;
+}
+
+void removeSubscription (client c_follower, client c_following) {
+    rmClient( &c_follower->abonnements, c_following);
+    rmClient( &c_following->abonnes, c_follower);
+}
+
+connected_clients insertConnectedClients (connected_clients liste, client c, int socket ) {
+    connected_clients newhead = malloc(sizeof(connected_clients));
+    newhead->cl = c;
+    newhead->socket = socket;
+    newhead->prochain = liste;
+    return newhead;
+}
+
+client findConnectedClient(connected_clients liste, int socket) {
+   while(liste != NULL) {
+    client personne = liste->cl;
+    if (liste->socket == socket) {
+        return liste->cl;
+    }
+    liste = liste->prochain;
+   }
+   return NULL;
+}
+
+void rmConnectedClient(connected_clients *listeptr, int socket) {
+   connected_clients liste = *listeptr;
+   connected_clients previousEntry = NULL;
+   while(liste != NULL) {
+    client personne = liste->cl;
+    if (previousEntry != NULL && liste->socket == socket) {
+        previousEntry->prochain = liste->prochain;
+        free(liste);
+        break;
+    } else if (liste->socket == socket) {
+        *listeptr = liste->prochain;
+        free(liste);
+        break;
+
+    }
+    previousEntry = liste;
+    liste = liste->prochain;
+   }
+   return;
 }

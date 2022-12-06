@@ -29,12 +29,18 @@ typedef struct liste_client_s {
     struct liste_client_s* prochain;
 } liste_client_s, *liste_client; 
 
+typedef struct connected_clients_s {
+    client cl;
+    int socket;
+    struct connected_clients_s* prochain;
+} connected_clients_s, *connected_clients;
+
 
 liste_message creer_liste_messages ();
 
 message newMessage(char* content, int length, long date, char* author) ;
 
-void insertListeMsg (liste_message listeMsg, message msg ) ;
+liste_message insertListeMsg (liste_message listeMsg, message msg ) ;
 
 
 void writeNewMsg(liste_message listeMsg, int idSocket, char* auteur, long date ) ;
@@ -54,3 +60,15 @@ liste_client findSubscribers(liste_client listeClient, char* pseudo ) ;
 liste_client findSubscriptions(liste_client listeClient, char* pseudo ) ;
 
 char** getNamesFromListeClient(liste_client liste) ;
+
+client findConnectedClient(connected_clients liste, int socket);
+
+void addSubscription (client* c_follower, client* c_following);
+
+void rmClient(liste_client *listeptr, client c) ;
+
+void removeSubscription (client c_follower, client c_following);
+
+connected_clients insertConnectedClients (connected_clients liste, client c, int socket );
+
+void rmConnectedClient(connected_clients *listeptr, int socket);

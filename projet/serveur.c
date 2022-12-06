@@ -37,6 +37,7 @@
 
 
 void serveur_appli(char *service); /* programme serveur */
+void printAllNewMessages(liste_message listeMsg, client c, int socket);
 
 /******************************************************************************/
 /*---------------- programme serveur ------------------------------*/
@@ -122,6 +123,9 @@ void serveur_appli(char *service)
 	int Flag = 1;
 	liste_client listeClients = NULL;
 	liste_message listeMsg = NULL; 
+	connected_clients listeConnected = NULL;
+	client c;
+	client following;
 
 	while (Flag)
     {
@@ -148,7 +152,7 @@ void serveur_appli(char *service)
                     exit (EXIT_FAILURE);
                   }
                 FD_SET (IDsocket_client, &active_fd_set);
-				client c = findClientfromAddr(listeClients, addr_client);
+				c = findClientfromAddr(listeClients, addr_client);
 				if (c == NULL) 
 				{
 					write(IDsocket_client,"Enter pseudo (max 6 chars)", 27);
@@ -162,11 +166,17 @@ void serveur_appli(char *service)
 					strcpy(pseudo, buffer);
 					client_s client = { pseudo, 0, addr_client, NULL, NULL};
 					listeClients = insertListeClient(listeClients, &client);
+					listeConnected = insertConnectedClients(listeConnected, &client, IDsocket_client);
+				} else {
+					sprintf(buffer, "Welcome back %s\n", c->pseudo );
+					printAllNewMessages(listeMsg, c, IDsocket_client);
+					write(IDsocket_client, buffer, 22);
 				}
 				write(IDsocket_client,"Enter command (a,d,l,m,n,h,q) :", 32);
               }
             else
               {
+				c = findConnectedClient(listeConnected, i);
   				if (read (i, buffer, BUFFER_SIZE) < 0)
     			{
       				/* Read error. */
@@ -177,12 +187,17 @@ void serveur_appli(char *service)
       			printf ("Server: got message: '%s'\n", buffer);
   				switch (buffer[0]) {
 					case 'a':
+						following = findClient(listeClients, buffer);
+						addSubscription(&c, &following); 
 						break;
 					case 'd':
+						following = findClient(listeClients, buffer);
+						removeSubscription(c, following); 
 						break;
-					case 'l':
+					case 'l': 
 						break;
 					case 'm':
+						insertListeMsg(listeMsg, newMessage(buffer, BUFFER_SIZE, time(NULL), c->pseudo));
 						break;
 					case 'n':
 						break;
@@ -191,6 +206,7 @@ void serveur_appli(char *service)
 					case 'q':	
 						close(i);
 						FD_CLR (i, &active_fd_set);
+						rmConnectedClient(&listeConnected, i);
     					//Flag = 0;
 						//break;
 				}
@@ -202,6 +218,15 @@ void serveur_appli(char *service)
     /*===== Fermeture de la connexion =====*/
 	close(IDsocket_passif);
 	FD_CLR (IDsocket_passif, &active_fd_set);
+}
+
+
+void printAllNewMessages(liste_message listeMsg, client c, int socket) {
+	liste_client subscriptions = c->abonnements;
+	while (subscriptions != NULL) {
+		writeNewMsg(listeMsg, socket, subscriptions->cl->pseudo , c->derniereDeconnexion );
+		subscriptions =  subscriptions->prochain;
+	}
 }
 
 /******************************************************************************/
