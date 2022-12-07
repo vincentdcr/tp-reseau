@@ -38,7 +38,6 @@ typedef struct connected_clients_s {
 
 liste_message creer_liste_messages ();
 
-message newMessage(char* content, int length, long date, char* author) ;
 
 void insertListeMsg (liste_message* listeMsg, message msg ) ;
 

@@ -102,12 +102,13 @@ void client_appli (char *serveur,char *service)
     char *read_server =malloc(sizeof(char)*BUFFER_SIZE);
     char *read_client =malloc(sizeof(char)*22);
 	read_client[0] = '1';
+	struct timeval delai = {10, 0}; 
 	while (read_client[0] != 'q')
     {
       /* Block until input arrives on one or more active sockets. */
       read_fd_set = active_fd_set;
 	  write_fd_set = active_fd_set;
-      if (select (FD_SETSIZE, &read_fd_set, NULL, NULL, NULL) < 0)
+      if (select (FD_SETSIZE, &read_fd_set, NULL, NULL, &delai) < 0)
         {
           perror ("select");
           exit (EXIT_FAILURE);

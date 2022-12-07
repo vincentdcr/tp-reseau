@@ -18,15 +18,6 @@ liste_message creer_liste_messages ()
     return malloc(sizeof(liste_message_s));
 }
 
-message newMessage(char* content, int length, long date, char* author) {
-    message m= malloc(sizeof(message));
-    m->contenu = content;
-    m->taille_contenu = length;
-    m->date = date;
-    m->auteur = author;
-    return m;
-}
-
 void insertListeMsg (liste_message* listeMsg, message msg ) {
     liste_message newhead = malloc(sizeof(liste_message));
     newhead->me = msg;

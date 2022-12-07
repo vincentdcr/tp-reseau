@@ -215,7 +215,14 @@ void serveur_appli(char *service)
 					case 'l': 
 						break;
 					case 'm':
-						insertListeMsg(&listeMsg, newMessage(buffer, BUFFER_SIZE, time(NULL), c->pseudo));
+						write(i,"Essai envoi message", 20);
+						if (read (i, buffer, BUFFER_SIZE) < 0)
+    					{		/* Read error. */
+      						perror ("read");
+      						exit (EXIT_FAILURE);
+    					}
+						message_s m= {buffer, strlen(buffer), time(NULL), c->pseudo}; 
+						insertListeMsg(&listeMsg,&m);
 						break;
 					case 'n':
 						break;
