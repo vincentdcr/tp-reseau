@@ -36,7 +36,7 @@ all: ${EXEC}
 #-DDEBUG
 
 types.o : types.c types.h
-	gcc  $(CFLAGS) -c  types.c	
+	gcc -g $(CFLAGS) -c  types.c	
 
 client.o : client.c 
 	gcc -g  $(CFLAGS) -c  client.c	

@@ -30,7 +30,7 @@
 #include "types.h"
 
 
-#define SERVICE_DEFAUT "9998"
+#define SERVICE_DEFAUT "9999"
 
 #define STDIN 0 // Standard input (stdin)
 #define BUFFER_SIZE 80
@@ -104,8 +104,8 @@ void serveur_appli(char *service)
           perror ("bind");
           exit (EXIT_FAILURE);
         }
-	//serveur en attente d'1 connexion
-	if ( listen(IDsocket_passif, 1) < 0 )
+	//serveur en attente de 5 connexions
+	if ( listen(IDsocket_passif, 5) < 0 )
         {
           perror ("listen");
           exit (EXIT_FAILURE);
@@ -156,19 +156,19 @@ void serveur_appli(char *service)
 				if (c == NULL) 
 				{
 					write(IDsocket_client,"Enter pseudo (max 6 chars)", 27);
-  					if (/*size = */read (IDsocket_client, buffer, 6) < 0)
+  					if (read (IDsocket_client, buffer, BUFFER_SIZE) < 0)
     				{
       					/* Read error. */
       					perror ("read");
       					exit (EXIT_FAILURE);
     				}
-					char pseudo[6];
+					char* pseudo = malloc(7*sizeof(char));
 					strcpy(pseudo, buffer);
 					client_s client = { pseudo, 0, addr_client, NULL, NULL};
-					listeClients = insertListeClient(listeClients, &client);
-					listeConnected = insertConnectedClients(listeConnected, &client, IDsocket_client);
+					insertListeClient(&listeClients, &client);
+					insertConnectedClients(&listeConnected, &client, IDsocket_client);
 				} else {
-					sprintf(buffer, "Welcome back %s\n", c->pseudo );
+					sprintf(buffer, "Welcome back %s\nEnter command (a,d,l,m,n,h,q) :", c->pseudo );
 					printAllNewMessages(listeMsg, c, IDsocket_client);
 					write(IDsocket_client, buffer, 22);
 				}
@@ -184,24 +184,43 @@ void serveur_appli(char *service)
       				exit (EXIT_FAILURE);
     			}
 				/* Data read. */
-      			printf ("Server: got message: '%s'\n", buffer);
+      			printf ("Server: got message: '%s' of length %ld\n", buffer, strlen(buffer));
   				switch (buffer[0]) {
 					case 'a':
+						write(i,"Essai abonnement", 22);
+					  	if (read (i, buffer, BUFFER_SIZE) < 0)
+    					{		/* Read error. */
+      						perror ("read");
+      						exit (EXIT_FAILURE);
+    					}
 						following = findClient(listeClients, buffer);
-						addSubscription(&c, &following); 
+						if (following != NULL)
+							addSubscription(&c, &following); 
+						else 
+							write(i, "Cet abonné n'existe pas", 25);
 						break;
 					case 'd':
+						write(i,"Essai désabonnement", 22);
+						if (read (i, buffer, BUFFER_SIZE) < 0)
+    					{		/* Read error. */
+      						perror ("read");
+      						exit (EXIT_FAILURE);
+    					}
 						following = findClient(listeClients, buffer);
-						removeSubscription(c, following); 
+						if (following != NULL)
+							removeSubscription(c, following); 
+						else 
+							write(i, "Cet abonné n'existe pas", 25);
 						break;
 					case 'l': 
 						break;
 					case 'm':
-						insertListeMsg(listeMsg, newMessage(buffer, BUFFER_SIZE, time(NULL), c->pseudo));
+						insertListeMsg(&listeMsg, newMessage(buffer, BUFFER_SIZE, time(NULL), c->pseudo));
 						break;
 					case 'n':
 						break;
 					case 'h':
+						write(i,"Commands :\na <pseudo> : s'abonner\nd <pseudo> : se désabonner\nl : lister abo\nm <msg> : ecrire msg\nh : aide comm.\nq : quitter\n\nEnter command (a,d,l,m,n,h,q) :", 158);
 						break;
 					case 'q':	
 						close(i);

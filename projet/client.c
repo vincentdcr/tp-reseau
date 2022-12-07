@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include  <sys/time.h>
 
-#define SERVICE_DEFAUT "9998"
+#define SERVICE_DEFAUT "9999"
 #define SERVEUR_DEFAUT "127.0.0.1"
 #define BUFFER_SIZE 800
 
@@ -124,10 +124,11 @@ void client_appli (char *serveur,char *service)
     			}
 			/* Data read. */
       		printf ("%s\n", read_server);
-        	scanf("%s", read_client);
-        	write(id_client_socket, read_client, 22);
+
          }
-    
+        scanf("%s", read_client);
+		printf("buffer_read : %s\n", read_client);
+        write(id_client_socket, read_client, 26);
     }
 
     /*===== Fermeture de la connexion =====*/

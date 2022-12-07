@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "types.h"
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -26,11 +27,11 @@ message newMessage(char* content, int length, long date, char* author) {
     return m;
 }
 
-liste_message insertListeMsg (liste_message listeMsg, message msg ) {
+void insertListeMsg (liste_message* listeMsg, message msg ) {
     liste_message newhead = malloc(sizeof(liste_message));
     newhead->me = msg;
-    newhead->prochain = listeMsg;
-    return newhead; 
+    newhead->prochain = *listeMsg;
+    *listeMsg = newhead; 
 }
 
 
@@ -62,18 +63,19 @@ void newClient(struct sockaddr_in adresse, char* pseudo, client c) {
     c->pseudo = pseudo;
 }
 
-liste_client insertListeClient (liste_client listeClient, client c ) {
+void insertListeClient (liste_client* listeClient, client c ) {
     liste_client newhead = malloc(sizeof(liste_client));
     newhead->cl = c;
-    newhead->prochain = listeClient;
-    return newhead;
+    newhead->prochain = *listeClient;
+    *listeClient = newhead;
 }
 
 client findClient(liste_client listeClient, char* pseudo ) {
    //start from the beginning
    while(listeClient != NULL) {
     client personne = listeClient->cl;
-    if (personne->pseudo == pseudo) {
+    printf("find client : %s\n", personne->pseudo);
+    if (strcmp(personne->pseudo,pseudo)==0) { 
         return personne;
     }
     listeClient = listeClient->prochain;
@@ -85,7 +87,6 @@ client findClientfromAddr(liste_client listeClient, struct sockaddr_in adresse )
    //start from the beginning
    while(listeClient != NULL) {
     client personne = listeClient->cl;
-    printf("find : %s\n", personne->pseudo);
     if (personne->addr.sin_addr.s_addr == adresse.sin_addr.s_addr) {
         return personne;
     }
@@ -146,6 +147,7 @@ void addSubscription (client* c_follower, client* c_following) {
 void rmClient(liste_client *listeptr, client c) {
    liste_client liste = *listeptr;
    liste_client previousEntry = NULL;
+   printf("rmClient : %s\n", c->pseudo);
    while(liste != NULL) {
     client personne = liste->cl;
     if (previousEntry != NULL && liste->cl == c) {
@@ -169,12 +171,12 @@ void removeSubscription (client c_follower, client c_following) {
     rmClient( &c_following->abonnes, c_follower);
 }
 
-connected_clients insertConnectedClients (connected_clients liste, client c, int socket ) {
+void insertConnectedClients (connected_clients* liste, client c, int socket ) {
     connected_clients newhead = malloc(sizeof(connected_clients));
     newhead->cl = c;
     newhead->socket = socket;
-    newhead->prochain = liste;
-    return newhead;
+    newhead->prochain = *liste;
+    (*liste) = newhead;
 }
 
 client findConnectedClient(connected_clients liste, int socket) {

@@ -40,7 +40,7 @@ liste_message creer_liste_messages ();
 
 message newMessage(char* content, int length, long date, char* author) ;
 
-liste_message insertListeMsg (liste_message listeMsg, message msg ) ;
+void insertListeMsg (liste_message* listeMsg, message msg ) ;
 
 
 void writeNewMsg(liste_message listeMsg, int idSocket, char* auteur, long date ) ;
@@ -49,7 +49,7 @@ liste_client creer_liste_client ();
 
 void newClient(struct sockaddr_in adresse, char* pseudo, client client) ;
 
-liste_client insertListeClient (liste_client listeClient, client c ) ;
+void insertListeClient (liste_client* listeClient, client c ) ;
 
 client findClient(liste_client listeClient, char* pseudo );
 
@@ -69,6 +69,6 @@ void rmClient(liste_client *listeptr, client c) ;
 
 void removeSubscription (client c_follower, client c_following);
 
-connected_clients insertConnectedClients (connected_clients liste, client c, int socket );
+void insertConnectedClients (connected_clients* liste, client c, int socket );
 
 void rmConnectedClient(connected_clients *listeptr, int socket);
