@@ -26,19 +26,21 @@ void insertListeMsg (liste_message* listeMsg, message msg ) {
 }
 
 
-void writeNewMsg(liste_message listeMsg, int idSocket, char* auteur, long date ) {
-   message m = listeMsg->me;
+void writeNewMsg(liste_message* listeMsg, int idSocket, char* auteur, long date ) {
+   message m = (*listeMsg)->me;
+   liste_message listeparcours = *listeMsg;
+   printf("writeNewMsg: %s, %ld\n", m->contenu, m->date);
    //start from the beginning
-   while(listeMsg != NULL && (m->date > date)) {
+   while(listeparcours != NULL && (m->date > date)) {
     if (m->auteur == auteur) {
         char msg[6+m->taille_contenu];
         sprintf(msg, "<%s> %s" , m->auteur , m->contenu );
         write(idSocket, msg, 6+m->taille_contenu );
     }
-    listeMsg = listeMsg->prochain;
+    listeparcours = listeparcours->prochain;
     if (listeMsg !=NULL )
-        m = listeMsg->me;
-   }
+        m = listeparcours->me;
+   } 
 }
 
 liste_client creer_liste_client ()

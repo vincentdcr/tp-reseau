@@ -225,6 +225,7 @@ void serveur_appli(char *service)
 						insertListeMsg(&listeMsg,&m);
 						break;
 					case 'n':
+						printAllNewMessages(listeMsg, c, i);
 						break;
 					case 'h':
 						write(i,"Commands :\na <pseudo> : s'abonner\nd <pseudo> : se désabonner\nl : lister abo\nm <msg> : ecrire msg\nh : aide comm.\nq : quitter\n\nEnter command (a,d,l,m,n,h,q) :", 158);
@@ -250,7 +251,8 @@ void serveur_appli(char *service)
 void printAllNewMessages(liste_message listeMsg, client c, int socket) {
 	liste_client subscriptions = c->abonnements;
 	while (subscriptions != NULL) {
-		writeNewMsg(listeMsg, socket, subscriptions->cl->pseudo , c->derniereDeconnexion );
+		printf("print msg : %s , %ld\n", subscriptions->cl->pseudo, c->derniereDeconnexion);
+		writeNewMsg(&listeMsg, socket, subscriptions->cl->pseudo , c->derniereDeconnexion );
 		subscriptions =  subscriptions->prochain;
 	}
 }
