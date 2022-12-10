@@ -125,7 +125,6 @@ char* getNamesFromListeClient(liste_client liste/*, bool isFollowing*/) {
         liste_pseudos = "Abonnés :";*/
     while(liste != NULL) {
         client name = liste->cl;
-        printf("%ld\n", strlen(liste_pseudos));
         sprintf (liste_pseudos + strlen(liste_pseudos), " %s .", name->pseudo);
         liste = liste->prochain;
     }

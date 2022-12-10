@@ -109,14 +109,15 @@ void serveur_appli(char *service)
 	liste_client listeClients = NULL;
 	liste_message listeMsg = NULL; 
 	connected_clients listeConnected = NULL;
-	client c;
+	client c = NULL;
 	client following;
+	struct timeval delai = {10 , 0};
 
 	while (Flag)
     {
       /* Block until input arrives on one or more active sockets. */
       read_fd_set = active_fd_set;
-      if (select (FD_SETSIZE, &read_fd_set, NULL, NULL, NULL) < 0)
+      if (select (FD_SETSIZE, &read_fd_set, NULL, NULL, &delai) < 0)
         {
           perror ("select");
           exit (EXIT_FAILURE);
@@ -137,19 +138,19 @@ void serveur_appli(char *service)
                     exit (EXIT_FAILURE);
                   }
                 FD_SET (IDsocket_client, &active_fd_set);
-				c = findClientfromAddr(listeClients, addr_client);
-				if (c == NULL) 
-				{
-					write(IDsocket_client,"Enter pseudo (max 6 chars)", 27);
-  					if (read (IDsocket_client, buffer, BUFFER_SIZE) < 0)
-    				{
-      					/* Read error. */
-      					perror ("read");
-      					exit (EXIT_FAILURE);
-    				}
-					char* pseudo = malloc(sizeof(char)*7);
-					pseudo = getName(buffer);
-					printf("pseudo : %s\n", pseudo);
+				//c = findClientfromAddr(listeClients, addr_client);
+				write(IDsocket_client,"Enter pseudo (max 6 chars)", 27);
+  				if (read (IDsocket_client, buffer, BUFFER_SIZE) < 0)
+    			{
+      				/* Read error. */
+      				perror ("read");
+      				exit (EXIT_FAILURE);
+    			}
+				char* pseudo = malloc(sizeof(char)*7);
+				pseudo = getName(buffer);
+				printf("pseudo : %s\n", pseudo);
+				c = findClient(listeClients, pseudo);
+				if (c == NULL) {
 					client cli = (client) malloc(sizeof(client_s));
 					cli->pseudo = pseudo;
 					cli->derniersMsgLus = 0;
@@ -159,6 +160,7 @@ void serveur_appli(char *service)
 					insertListeClient(&listeClients, cli);
 					insertConnectedClients(&listeConnected, cli, IDsocket_client);
 				} else {
+					insertConnectedClients(&listeConnected, c, IDsocket_client);
 					sprintf(buffer, "Welcome back %s", c->pseudo );
 					write(IDsocket_client, buffer, 14+strlen(c->pseudo));
 				}
@@ -167,7 +169,6 @@ void serveur_appli(char *service)
             else
               {
 				c = findConnectedClient(listeConnected, i);
-				printAllNewMessages(listeMsg, c, i);
 
   				if (read (i, buffer, BUFFER_SIZE) < 0)
     			{
@@ -222,7 +223,7 @@ void serveur_appli(char *service)
 						break;
 					}
 					case 'h': {
-						write(i,"Commands :\na <pseudo> : s'abonner\nd <pseudo> : se désabonner\nl : lister abo\nm <msg> : ecrire msg\nh : aide comm.\nq : quitter\n", 126);
+						write(i,"Commandes :\na <pseudo> : s'abonner\nd <pseudo> : se désabonner\nl : lister abo\nm <msg> : ecrire msg\nh : aide comm.\nq : quitter\n", 127);
 						break;
 					}
 					case 'q': {	
@@ -233,6 +234,8 @@ void serveur_appli(char *service)
 						break;
 					}
 				}
+				if (buffer[0]!='q') //empêche de "lire" des msg alors que le client n'ecoute plus
+					printAllNewMessages(listeMsg, c, i);
 				write(i,"Entrer command (a,d,l,m,h,q) :", 330);
               }
           }
@@ -253,9 +256,9 @@ void printAllNewMessages(liste_message listeMsg, client c, int socket) {
 			messages = writeNewMsg(&listeMsg, socket, subscriptions->cl->pseudo , c->derniersMsgLus );
 			write(socket, messages, strlen(messages)+1); // +1 pour le \0 final
 			subscriptions =  subscriptions->prochain;
+			if (strlen(messages)!=0) //pr ne pas réafficher des msg déjà lus
+				c->derniersMsgLus = time(NULL);
 		}
-		if (strlen(messages)!=0)
-			c->derniersMsgLus = time(NULL);
 	}
 }
 
