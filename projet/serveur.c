@@ -24,13 +24,12 @@
 
 #include <sys/signal.h>
 #include <sys/wait.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include  <sys/time.h>
 #include "types.h"
 
 
-#define SERVICE_DEFAUT "9999"
+#define SERVICE_DEFAUT "9998"
 
 #define STDIN 0 // Standard input (stdin)
 #define BUFFER_SIZE 24
@@ -112,13 +111,12 @@ void serveur_appli(char *service)
 	connected_clients listeConnected = NULL;
 	client c;
 	client following;
-	struct timeval delai = {10, 0};
 
 	while (Flag)
     {
       /* Block until input arrives on one or more active sockets. */
       read_fd_set = active_fd_set;
-      if (select (FD_SETSIZE, &read_fd_set, NULL, NULL, &delai) < 0)
+      if (select (FD_SETSIZE, &read_fd_set, NULL, NULL, NULL) < 0)
         {
           perror ("select");
           exit (EXIT_FAILURE);
@@ -203,10 +201,16 @@ void serveur_appli(char *service)
 						break;
 					}
 					case 'l': {
+						/*char * listePseudos = getNamesFromListeClient(c->abonnements, TRUE);
+						write(i, listePseudos, strlen(listePseudos)+1); // pour le \0 final
+
+						listePseudos = getNamesFromListeClient(c->abonnes, FALSE);
+						write(i, listePseudos, strlen(listePseudos)+1); // pour le \0 final*/
+						char * listePseudos = getNamesFromListeClient(c->abonnements);
+						write(i, listePseudos, strlen(listePseudos)+1); // pour le \0 final
 						break;
 					}
 					case 'm': {
-						printf("entered in m\n");
 						argument = getArgument(buffer, FALSE);
 						message m = (message) malloc(sizeof(message_s));
 						m->contenu = argument;

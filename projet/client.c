@@ -26,7 +26,7 @@
 #include <sys/time.h>
  #include <fcntl.h>
 
-#define SERVICE_DEFAUT "9999"
+#define SERVICE_DEFAUT "9998"
 #define SERVEUR_DEFAUT "127.0.0.1"
 #define BUFFER_SIZE 800
 

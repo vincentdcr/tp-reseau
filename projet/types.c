@@ -9,7 +9,7 @@
 
 #include <sys/signal.h>
 #include <sys/wait.h>
-#include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <time.h>
 
@@ -115,18 +115,21 @@ liste_client findSubscriptions(liste_client listeClient, char* pseudo ) {
     listeClient = listeClient->prochain;
    }
    return NULL;
-}
+} 
 
-char** getNamesFromListeClient(liste_client liste) {
-    char** liste_pseudos; //not flexible...
-    int i=0;
+char* getNamesFromListeClient(liste_client liste/*, bool isFollowing*/) {
+    char* liste_pseudos = calloc(800, sizeof(char));; //not flexible...
+    /*if(isFollowing)
+        liste_pseudos = "Abonnements :";
+    else
+        liste_pseudos = "Abonnés :";*/
     while(liste != NULL) {
         client name = liste->cl;
-        liste_pseudos[i]= name->pseudo;
-        i++;
+        printf("%ld\n", strlen(liste_pseudos));
+        sprintf (liste_pseudos + strlen(liste_pseudos), " %s .", name->pseudo);
+        liste = liste->prochain;
     }
-    liste = liste->prochain;
-   return liste_pseudos;
+    return liste_pseudos;
 } 
 
 //tester si les deux existent AVANT

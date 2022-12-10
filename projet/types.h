@@ -1,4 +1,5 @@
 #include <netinet/in.h>
+#include <stdbool.h>
 
 //Type message et une liste chainee de messages
 
@@ -56,7 +57,7 @@ liste_client findSubscribers(liste_client listeClient, char* pseudo ) ;
 
 liste_client findSubscriptions(liste_client listeClient, char* pseudo ) ;
 
-char** getNamesFromListeClient(liste_client liste) ;
+char* getNamesFromListeClient(liste_client liste) ;
 
 client findConnectedClient(connected_clients liste, int socket);
 
