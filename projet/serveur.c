@@ -151,9 +151,14 @@ void serveur_appli(char *service)
 					char* pseudo = malloc(sizeof(char)*7);
 					pseudo = getName(buffer);
 					printf("pseudo : %s\n", pseudo);
-					client_s client = { pseudo, 0, addr_client, NULL, NULL};
-					insertListeClient(&listeClients, &client);
-					insertConnectedClients(&listeConnected, &client, IDsocket_client);
+					client cli = (client) malloc(sizeof(client_s));
+					cli->pseudo = pseudo;
+					cli->derniereDeconnexion = 0;
+					cli->addr = addr_client;
+					cli->abonnements = NULL;
+					cli->abonnes = NULL;
+					insertListeClient(&listeClients, cli);
+					insertConnectedClients(&listeConnected, cli, IDsocket_client);
 				} else {
 					sprintf(buffer, "Welcome back %s\nEnter command (a,d,l,m,n,h,q) :", c->pseudo );
 					printAllNewMessages(listeMsg, c, IDsocket_client);
@@ -199,7 +204,6 @@ void serveur_appli(char *service)
 					case 'm': {
 						write(i,"Essai envoi message", 20);
 						argument = getArgument(buffer, FALSE);
-						message_s m1;
 						message m = (message) malloc(sizeof(message_s));
 						m->contenu = argument;
 						m->taille_contenu = strlen(argument);
