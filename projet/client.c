@@ -117,10 +117,10 @@ void client_appli(char *serveur, char *service)
 		/* Service all the sockets with input pending. */
 		if (FD_ISSET(STDIN_FILENO, &read_fd_set))
 		{
-			int nbchar = read(STDIN_FILENO, read_client, 27);
+			int nbchar = read(STDIN_FILENO, read_client, 23); // command (1 char) + ' ' + argument (max 20) + '\n'
 			if (nbchar >=0)
 				read_client[nbchar] = '\0';
-			write(id_client_socket, read_client, 27);
+			write(id_client_socket, read_client, 24);
 		}
 		if (FD_ISSET(id_client_socket, &read_fd_set))
 		{

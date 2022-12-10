@@ -18,7 +18,7 @@ typedef struct liste_message_s {
 
 typedef struct {
     char* pseudo; /* 6 max */
-    long derniereDeconnexion;
+    long derniersMsgLus;
     struct sockaddr_in addr; // IP ?
     struct liste_client_s* abonnements;
     struct liste_client_s* abonnes;
@@ -45,8 +45,6 @@ void insertListeMsg (liste_message* listeMsg, message msg ) ;
 char* writeNewMsg(liste_message* listeMsg, int idSocket, char* auteur, long date ) ;
 
 liste_client creer_liste_client ();
-
-void newClient(struct sockaddr_in adresse, char* pseudo, client client) ;
 
 void insertListeClient (liste_client* listeClient, client c ) ;
 

@@ -35,9 +35,9 @@ void insertListeMsg (liste_message* listeMsg, message msg ) {
 
 char* writeNewMsg(liste_message* listeMsg, int idSocket, char* auteur, long date ) {
    char * messages = malloc(sizeof(char)*800); //taille max buffer reception client
-   messages[0] = '\0';
+   messages[0] = '\0'; //pr le strcat
    char * msg = malloc(sizeof(char)*(6+6+15+20)); //char entête + taillemax pseudo + taille date + taille max msg 
-   char * time = malloc(15); //entête + taille max msg 
+   char * time = malloc(15); //taille date 
    message m = (*listeMsg)->me;
    liste_message listeparcours = *listeMsg;
    printf("writeNewMsg: %s, %ld\n", m->contenu, m->date);
@@ -59,14 +59,6 @@ liste_client creer_liste_client ()
 {
     return malloc(sizeof(liste_client_s));
 } 
- 
-void newClient(struct sockaddr_in adresse, char* pseudo, client c) {
-    c->abonnements = NULL; 
-    c->abonnes = NULL;
-    c->derniereDeconnexion = 0; 
-    c->addr = adresse ;
-    c->pseudo = pseudo;
-}
 
 void insertListeClient (liste_client* listeClient, client c ) {
     liste_client newhead = malloc(sizeof(liste_client));

@@ -33,7 +33,7 @@
 #define SERVICE_DEFAUT "9999"
 
 #define STDIN 0 // Standard input (stdin)
-#define BUFFER_SIZE 27
+#define BUFFER_SIZE 24
 
 
 void serveur_appli(char *service); /* programme serveur */
@@ -89,8 +89,8 @@ void serveur_appli(char *service)
           perror ("bind");
           exit (EXIT_FAILURE);
         }
-	//serveur en attente de 5 connexions
-	if ( listen(IDsocket_passif, 5) < 0 )
+	//serveur en attente de 10 connexions
+	if ( listen(IDsocket_passif, 10) < 0 )
         {
           perror ("listen");
           exit (EXIT_FAILURE);
@@ -112,12 +112,13 @@ void serveur_appli(char *service)
 	connected_clients listeConnected = NULL;
 	client c;
 	client following;
+	struct timeval delai = {10, 0};
 
 	while (Flag)
     {
       /* Block until input arrives on one or more active sockets. */
       read_fd_set = active_fd_set;
-      if (select (FD_SETSIZE, &read_fd_set, NULL, NULL, NULL) < 0)
+      if (select (FD_SETSIZE, &read_fd_set, NULL, NULL, &delai) < 0)
         {
           perror ("select");
           exit (EXIT_FAILURE);
@@ -153,22 +154,23 @@ void serveur_appli(char *service)
 					printf("pseudo : %s\n", pseudo);
 					client cli = (client) malloc(sizeof(client_s));
 					cli->pseudo = pseudo;
-					cli->derniereDeconnexion = 0;
+					cli->derniersMsgLus = 0;
 					cli->addr = addr_client;
 					cli->abonnements = NULL;
 					cli->abonnes = NULL;
 					insertListeClient(&listeClients, cli);
 					insertConnectedClients(&listeConnected, cli, IDsocket_client);
 				} else {
-					sprintf(buffer, "Welcome back %s\nEnter command (a,d,l,m,n,h,q) :", c->pseudo );
-					printAllNewMessages(listeMsg, c, IDsocket_client);
-					write(IDsocket_client, buffer, 46+strlen(c->pseudo));
+					sprintf(buffer, "Welcome back %s", c->pseudo );
+					write(IDsocket_client, buffer, 14+strlen(c->pseudo));
 				}
 				write(IDsocket_client,"Entrer command (a,d,l,m,n,h,q) :", 33);
               }
             else
               {
 				c = findConnectedClient(listeConnected, i);
+				printAllNewMessages(listeMsg, c, i);
+
   				if (read (i, buffer, BUFFER_SIZE) < 0)
     			{
       				/* Read error. */
@@ -179,30 +181,32 @@ void serveur_appli(char *service)
       			printf ("Server: got message: '%s' of length %ld\n", buffer, strlen(buffer));
   				switch (buffer[0]) {
 					case 'a': {
-						write(i,"Essai abonnement", 17);
 						argument = getArgument(buffer, TRUE);
 						following = findClient(listeClients, argument);
-						if (following != NULL)
+						// si le pseudo existe et qu'on est pas déjà abonné
+						if (following != NULL && findClient(c->abonnements, argument)==NULL ) {
 							addSubscription(&c, &following); 
-						else 
-							write(i, "Cet abonné n'existe pas", 25);
+							write(i, "Abonnement ajouté", 19);
+						} else 
+							write(i, "Cet abonné n'existe pas / déjà abonné", 42);
 						break;
 					}
 					case 'd': {
-						write(i,"Essai désabonnement", 21);
 						argument = getArgument(buffer, TRUE);
 						following = findClient(listeClients, argument);
-						if (following != NULL)
+						// si le pseudo existe et qu'on est déjà abonné
+						if (following != NULL && findClient(c->abonnements, argument)!=NULL) {
 							removeSubscription(c, following); 
-						else 
-							write(i, "Cet abonné n'existe pas", 25);
+							write(i, "Désabonnement confirmé", 25);
+						} else 
+							write(i, "Cet abonné n'existe pas / pas abonné", 25);
 						break;
 					}
 					case 'l': {
 						break;
 					}
 					case 'm': {
-						write(i,"Essai envoi message", 20);
+						printf("entered in m\n");
 						argument = getArgument(buffer, FALSE);
 						message m = (message) malloc(sizeof(message_s));
 						m->contenu = argument;
@@ -210,14 +214,11 @@ void serveur_appli(char *service)
 						m->date = time(NULL);
 						m->auteur = c->pseudo; 
 						insertListeMsg(&listeMsg,m);
-						break;
-					}
-					case 'n': {
-						printAllNewMessages(listeMsg, c, i);
+						write(i, "Message ajouté", 25);
 						break;
 					}
 					case 'h': {
-						write(i,"Commands :\na <pseudo> : s'abonner\nd <pseudo> : se désabonner\nl : lister abo\nm <msg> : ecrire msg\nh : aide comm.\nq : quitter\n\nEnter command (a,d,l,m,n,h,q) :", 158);
+						write(i,"Commands :\na <pseudo> : s'abonner\nd <pseudo> : se désabonner\nl : lister abo\nm <msg> : ecrire msg\nh : aide comm.\nq : quitter\n", 126);
 						break;
 					}
 					case 'q': {	
@@ -225,10 +226,10 @@ void serveur_appli(char *service)
 						FD_CLR (i, &active_fd_set);
 						rmConnectedClient(&listeConnected, i);
     					//Flag = 0;
-						//break;
+						break;
 					}
 				}
-				write(i,"Entrer command (a,d,l,m,n,h,q) :", 33);
+				write(i,"Entrer command (a,d,l,m,h,q) :", 330);
               }
           }
     }
@@ -240,18 +241,22 @@ void serveur_appli(char *service)
 
 
 void printAllNewMessages(liste_message listeMsg, client c, int socket) {
-	liste_client subscriptions = c->abonnements;
-	char * messages = malloc(sizeof(char)*800); //pas bien mais comment faire ?
-	while (subscriptions != NULL) {
-		printf("print msg : %s , %ld\n", subscriptions->cl->pseudo, c->derniereDeconnexion);
-		messages = writeNewMsg(&listeMsg, socket, subscriptions->cl->pseudo , c->derniereDeconnexion );
-		write(socket, messages, strlen(messages));
-		subscriptions =  subscriptions->prochain;
+	if (listeMsg != NULL) {
+		liste_client subscriptions = c->abonnements;
+		char * messages = malloc(sizeof(char)*800); //pas bien mais comment faire ?
+		while (subscriptions != NULL) {
+			printf("print msg : %s , %ld\n", subscriptions->cl->pseudo, c->derniersMsgLus);
+			messages = writeNewMsg(&listeMsg, socket, subscriptions->cl->pseudo , c->derniersMsgLus );
+			write(socket, messages, strlen(messages)+1); // +1 pour le \0 final
+			subscriptions =  subscriptions->prochain;
+		}
+		if (strlen(messages)!=0)
+			c->derniersMsgLus = time(NULL);
 	}
 }
 
 char * getArgument(char * command, bool flagCheckSpaces) {
-	char * argument = malloc(sizeof(strlen(command)-2));
+	char * argument = calloc(strlen(command)-2,sizeof(char)); //sinon on ajoute jamais de \0
 	char * temp = command;
 	int j=0;
 	for(int i=2; i<strlen(command); i++) {
