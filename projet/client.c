@@ -24,6 +24,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
+ #include <fcntl.h>
 
 #define SERVICE_DEFAUT "9999"
 #define SERVEUR_DEFAUT "127.0.0.1"
@@ -94,44 +95,45 @@ void client_appli(char *serveur, char *service)
 	/* Initialize the set of active sockets. */
 	fd_set active_fd_set, read_fd_set, write_fd_set;
 	FD_ZERO(&active_fd_set);
+	FD_SET(STDIN_FILENO, &active_fd_set);
 	FD_SET(id_client_socket, &active_fd_set);
 
 	char *read_server = malloc(sizeof(char) * BUFFER_SIZE);
-	char *read_client = malloc(sizeof(char) * 22);
+	char *read_client = malloc(sizeof(char) * 27);
 	read_client[0] = '1';
 	struct timeval delai = {10, 0};
+
+	fcntl(id_client_socket, F_SETFL, O_NONBLOCK);
+	fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
 	while (read_client[0] != 'q')
 	{
 		/* Block until input arrives on one or more active sockets. */
 		read_fd_set = active_fd_set;
-		write_fd_set = active_fd_set;
-		if (select(FD_SETSIZE, &read_fd_set, NULL, NULL, &delai) < 0)
+		if (select(id_client_socket+1, &read_fd_set, NULL, NULL, &delai) < 0)
 		{
 			perror("select");
 			exit(EXIT_FAILURE);
 		}
 		/* Service all the sockets with input pending. */
-		for (int i = 0; i < FD_SETSIZE; ++i)
-			if (FD_ISSET(i, &read_fd_set))
-			{
-				if (read(i, read_server, BUFFER_SIZE) < 0)
-				{
-					/* Read error. */
-					perror("read");
-					exit(EXIT_FAILURE);
-				}
-				/* Data read. */
-				printf("%s\n", read_server);
-			}
-		scanf("%s", read_client);
-		printf("buffer_read : %s\n", read_client);
-		write(id_client_socket, read_client, 26);
+		if (FD_ISSET(STDIN_FILENO, &read_fd_set))
+		{
+			int nbchar = read(STDIN_FILENO, read_client, 27);
+			if (nbchar >=0)
+				read_client[nbchar] = '\0';
+			write(id_client_socket, read_client, 27);
+		}
+		if (FD_ISSET(id_client_socket, &read_fd_set))
+		{
+			read(id_client_socket, read_server, BUFFER_SIZE);
+			printf("%s\n", read_server);
+		}
 	}
 
 	/*===== Fermeture de la connexion =====*/
-	FD_CLR(id_client_socket, &active_fd_set);
+	FD_CLR(STDOUT_FILENO, &active_fd_set);
 	close(id_client_socket);
 }
+
 
 
 /*****************************************************************************/

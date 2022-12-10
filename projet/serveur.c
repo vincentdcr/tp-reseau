@@ -33,11 +33,13 @@
 #define SERVICE_DEFAUT "9999"
 
 #define STDIN 0 // Standard input (stdin)
-#define BUFFER_SIZE 80
+#define BUFFER_SIZE 27
 
 
 void serveur_appli(char *service); /* programme serveur */
 void printAllNewMessages(liste_message listeMsg, client c, int socket);
+char * getArgument(char * command, bool flagCheckSpaces);
+char* getName(char * command);
 
 /******************************************************************************/
 /*---------------- programme serveur ------------------------------*/
@@ -65,23 +67,6 @@ int main(int argc, char *argv[])
 	/* service est le service (ou numero de port) auquel sera affecte
 	ce serveur*/
 	serveur_appli(service);
-}
-
-
-/*Fct pour completer le buffer et l'emmener jusqu'a une taille fixe de BUFFER_SIZE caracteres pour toujours envoyer un paquet de meme taille
-@param : chaine contenant les infos a transmettre (taille < BUFFER_SIZE)
-@res : chaine de BUFFER_SIZE caracteres a transmettre*/
-char * completemsg(char* buffer) {
-	char * msg = malloc(sizeof(char)*BUFFER_SIZE);
-	int taille = strlen(buffer);
-	//copie du msg dans le debut de la chaine
-	for(int i=0 ; i<taille; i++)
-		msg[i]=buffer[i];
-	// on complete par des espaces puis par un retour a la ligne
-	for (int j=taille; j<(BUFFER_SIZE-1) ; j++)
-		msg[j]=' ';
-	msg[BUFFER_SIZE-1]='\n';
-	return msg;
 }
 
 /******************************************************************************/
@@ -120,6 +105,7 @@ void serveur_appli(char *service)
     //===== Flash (comm. client/serveur) =====
 
 	char * buffer = malloc(sizeof(char)*BUFFER_SIZE);
+	char * argument = malloc(sizeof(char)*(BUFFER_SIZE-2));
 	int Flag = 1;
 	liste_client listeClients = NULL;
 	liste_message listeMsg = NULL; 
@@ -162,17 +148,18 @@ void serveur_appli(char *service)
       					perror ("read");
       					exit (EXIT_FAILURE);
     				}
-					char* pseudo = malloc(7*sizeof(char));
-					strcpy(pseudo, buffer);
+					char* pseudo = malloc(sizeof(char)*7);
+					pseudo = getName(buffer);
+					printf("pseudo : %s\n", pseudo);
 					client_s client = { pseudo, 0, addr_client, NULL, NULL};
 					insertListeClient(&listeClients, &client);
 					insertConnectedClients(&listeConnected, &client, IDsocket_client);
 				} else {
 					sprintf(buffer, "Welcome back %s\nEnter command (a,d,l,m,n,h,q) :", c->pseudo );
 					printAllNewMessages(listeMsg, c, IDsocket_client);
-					write(IDsocket_client, buffer, 22);
+					write(IDsocket_client, buffer, 46+strlen(c->pseudo));
 				}
-				write(IDsocket_client,"Enter command (a,d,l,m,n,h,q) :", 32);
+				write(IDsocket_client,"Entrer command (a,d,l,m,n,h,q) :", 33);
               }
             else
               {
@@ -186,58 +173,58 @@ void serveur_appli(char *service)
 				/* Data read. */
       			printf ("Server: got message: '%s' of length %ld\n", buffer, strlen(buffer));
   				switch (buffer[0]) {
-					case 'a':
-						write(i,"Essai abonnement", 22);
-					  	if (read (i, buffer, BUFFER_SIZE) < 0)
-    					{		/* Read error. */
-      						perror ("read");
-      						exit (EXIT_FAILURE);
-    					}
-						following = findClient(listeClients, buffer);
+					case 'a': {
+						write(i,"Essai abonnement", 17);
+						argument = getArgument(buffer, TRUE);
+						following = findClient(listeClients, argument);
 						if (following != NULL)
 							addSubscription(&c, &following); 
 						else 
 							write(i, "Cet abonné n'existe pas", 25);
 						break;
-					case 'd':
-						write(i,"Essai désabonnement", 22);
-						if (read (i, buffer, BUFFER_SIZE) < 0)
-    					{		/* Read error. */
-      						perror ("read");
-      						exit (EXIT_FAILURE);
-    					}
-						following = findClient(listeClients, buffer);
+					}
+					case 'd': {
+						write(i,"Essai désabonnement", 21);
+						argument = getArgument(buffer, TRUE);
+						following = findClient(listeClients, argument);
 						if (following != NULL)
 							removeSubscription(c, following); 
 						else 
 							write(i, "Cet abonné n'existe pas", 25);
 						break;
-					case 'l': 
+					}
+					case 'l': {
 						break;
-					case 'm':
+					}
+					case 'm': {
 						write(i,"Essai envoi message", 20);
-						if (read (i, buffer, BUFFER_SIZE) < 0)
-    					{		/* Read error. */
-      						perror ("read");
-      						exit (EXIT_FAILURE);
-    					}
-						message_s m= {buffer, strlen(buffer), time(NULL), c->pseudo}; 
-						insertListeMsg(&listeMsg,&m);
+						argument = getArgument(buffer, FALSE);
+						message_s m1;
+						message m = (message) malloc(sizeof(message_s));
+						m->contenu = argument;
+						m->taille_contenu = strlen(argument);
+						m->date = time(NULL);
+						m->auteur = c->pseudo; 
+						insertListeMsg(&listeMsg,m);
 						break;
-					case 'n':
+					}
+					case 'n': {
 						printAllNewMessages(listeMsg, c, i);
 						break;
-					case 'h':
+					}
+					case 'h': {
 						write(i,"Commands :\na <pseudo> : s'abonner\nd <pseudo> : se désabonner\nl : lister abo\nm <msg> : ecrire msg\nh : aide comm.\nq : quitter\n\nEnter command (a,d,l,m,n,h,q) :", 158);
 						break;
-					case 'q':	
+					}
+					case 'q': {	
 						close(i);
 						FD_CLR (i, &active_fd_set);
 						rmConnectedClient(&listeConnected, i);
     					//Flag = 0;
 						//break;
+					}
 				}
-				write(i,"Enter command (a,d,l,m,n,h,q) :", 32);
+				write(i,"Entrer command (a,d,l,m,n,h,q) :", 33);
               }
           }
     }
@@ -250,11 +237,40 @@ void serveur_appli(char *service)
 
 void printAllNewMessages(liste_message listeMsg, client c, int socket) {
 	liste_client subscriptions = c->abonnements;
+	char * messages = malloc(sizeof(char)*800); //pas bien mais comment faire ?
 	while (subscriptions != NULL) {
 		printf("print msg : %s , %ld\n", subscriptions->cl->pseudo, c->derniereDeconnexion);
-		writeNewMsg(&listeMsg, socket, subscriptions->cl->pseudo , c->derniereDeconnexion );
+		messages = writeNewMsg(&listeMsg, socket, subscriptions->cl->pseudo , c->derniereDeconnexion );
+		write(socket, messages, strlen(messages));
 		subscriptions =  subscriptions->prochain;
 	}
 }
+
+char * getArgument(char * command, bool flagCheckSpaces) {
+	char * argument = malloc(sizeof(strlen(command)-2));
+	char * temp = command;
+	int j=0;
+	for(int i=2; i<strlen(command); i++) {
+		if ((temp[i]==' ' && flagCheckSpaces) || temp[i]=='\n')
+			break;
+		argument[j]=temp[i];
+		j++;
+	}
+	return argument;
+}
+
+char * getName(char * command) {
+	char * name = malloc(sizeof(strlen(command)-2));
+	char * temp = command;
+	int j=0;
+	for(int i=0; i<strlen(command); i++) {
+		if (temp[i]=='\n')
+			break;
+		name[j]=temp[i];
+		j++;
+	}
+	return name;
+}
+
 
 /******************************************************************************/

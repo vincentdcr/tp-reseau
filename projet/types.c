@@ -11,7 +11,14 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include  <sys/time.h>
+#include <time.h>
+
+void find_date(long timestamp, int *date, int *hour){
+    char buf[20];
+    struct tm *time_struct = (struct tm*) timestamp;
+    strftime(buf, sizeof(buf), "%Y%m%d,%H", time_struct);
+    printf("Time: %s", buf);
+}
 
 liste_message creer_liste_messages ()
 {
@@ -26,21 +33,26 @@ void insertListeMsg (liste_message* listeMsg, message msg ) {
 }
 
 
-void writeNewMsg(liste_message* listeMsg, int idSocket, char* auteur, long date ) {
+char* writeNewMsg(liste_message* listeMsg, int idSocket, char* auteur, long date ) {
+   char * messages = malloc(sizeof(char)*800); //taille max buffer reception client
+   messages[0] = '\0';
+   char * msg = malloc(sizeof(char)*(6+6+15+20)); //char entête + taillemax pseudo + taille date + taille max msg 
+   char * time = malloc(15); //entête + taille max msg 
    message m = (*listeMsg)->me;
    liste_message listeparcours = *listeMsg;
    printf("writeNewMsg: %s, %ld\n", m->contenu, m->date);
    //start from the beginning
    while(listeparcours != NULL && (m->date > date)) {
-    if (m->auteur == auteur) {
-        char msg[6+m->taille_contenu];
-        sprintf(msg, "<%s> %s" , m->auteur , m->contenu );
-        write(idSocket, msg, 6+m->taille_contenu );
+    if (strcmp(m->auteur,auteur)==0) {
+        strftime(time, 15, "%a - %X", localtime(&m->date));
+        sprintf(msg, "<%s | %s> %s\n" , m->auteur , time, m->contenu );
+        strcat(messages, msg);
     }
     listeparcours = listeparcours->prochain;
-    if (listeMsg !=NULL )
+    if (listeparcours !=NULL )
         m = listeparcours->me;
    } 
+   return messages;
 }
 
 liste_client creer_liste_client ()
