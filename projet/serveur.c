@@ -163,7 +163,7 @@ void serveur_appli(char *service)
 							sprintf(buffer, "Welcome back %s", c->pseudo );
 							write(IDsocket_client, buffer, 14+strlen(c->pseudo));
 						}
-						write(IDsocket_client,"Entrer command (a,d,l,m,h,q) :", 31);
+						write(IDsocket_client,"Entrer commande (a,d,l,m,h,q) :", 32);
 					}
 				}
 				else
@@ -176,7 +176,7 @@ void serveur_appli(char *service)
 						printf ("Server: got message: '%s' of length %ld\n", buffer, strlen(buffer));
 						switch (buffer[0]) {
 							case 'a': {
-								argument = getArgument(buffer, TRUE);
+								argument = getArgument(buffer, FALSE);
 								following = findClient(listeClients, argument);
 								// si le pseudo existe et qu'on est pas déjà abonné
 								if (following != NULL && findClient(c->abonnements, argument)==NULL ) {
@@ -187,7 +187,7 @@ void serveur_appli(char *service)
 								break;
 							}
 							case 'd': {
-								argument = getArgument(buffer, TRUE);
+								argument = getArgument(buffer, FALSE);
 								following = findClient(listeClients, argument);
 								// si le pseudo existe et qu'on est déjà abonné
 								if (following != NULL && findClient(c->abonnements, argument)!=NULL) {
@@ -232,7 +232,7 @@ void serveur_appli(char *service)
 								break;
 							}
 						}
-						write(i,"Entrer command (a,d,l,m,h,q) :", 31);
+						write(i,"Entrer commande (a,d,l,m,h,q) :", 32);
 					}	
 				}
 			}
@@ -264,7 +264,7 @@ void printAllNewMessages(liste_message listeMsg, client c, int socket) {
 		free(messages);
 	}
 }
-
+//recupere l'argument d'une commande envoye par un client
 char * getArgument(char * command, bool flagCheckSpaces) {
 	char * argument = calloc(strlen(command)-2,sizeof(char)); //sinon on ajoute jamais de \0
 	char * temp = command;
@@ -277,7 +277,7 @@ char * getArgument(char * command, bool flagCheckSpaces) {
 	}
 	return argument;
 }
-
+//recupere le pseudo en enlevant le \n final rajoute par le write
 char * getName(char * command) {
 	char * name = calloc(strlen(command)-2,sizeof(char));
 	char * temp = command;

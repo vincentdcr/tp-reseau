@@ -30,6 +30,8 @@ typedef struct liste_client_s {
     struct liste_client_s* prochain;
 } liste_client_s, *liste_client; 
 
+// liste chainee de clients connectés
+
 typedef struct connected_clients_s {
     client cl;
     int socket;
