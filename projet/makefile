@@ -31,7 +31,7 @@ OPTIONS	+= -ltermcap  -lsocket -lnsl
 CFLAGS	+= -I..
 endif
 
-EXEC = ${OBJ1} client ${OBJ2} serveur ${OBJ3} serveur_select
+EXEC = ${OBJ1} client ${OBJ2} serveur ${OBJ3} serveur_select ${OBJ4}
 all: ${EXEC} 	
 
 #-DDEBUG
