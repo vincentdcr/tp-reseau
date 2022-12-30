@@ -13,13 +13,6 @@
 #include <unistd.h>
 #include <time.h>
 
-void find_date(long timestamp, int *date, int *hour){
-    char buf[20];
-    struct tm *time_struct = (struct tm*) timestamp;
-    strftime(buf, sizeof(buf), "%Y%m%d,%H", time_struct);
-    printf("Time: %s", buf);
-}
-
 liste_message creer_liste_messages ()
 {
     return malloc(sizeof(liste_message_s));
@@ -33,14 +26,12 @@ void insertListeMsg (liste_message* listeMsg, message msg ) {
 }
 
 
-char* writeNewMsg(liste_message* listeMsg, int idSocket, char* auteur, long date ) {
-   char * messages = malloc(sizeof(char)*800); //taille max buffer reception client
+void writeNewMsg(char * messages, liste_message* listeMsg, int idSocket, char* auteur, long date ) {
    messages[0] = '\0'; //pr le strcat
    char * msg = malloc(sizeof(char)*(6+6+15+20)); //char entête + taillemax pseudo + taille date + taille max msg 
    char * time = malloc(15); //taille date 
    message m = (*listeMsg)->me;
    liste_message listeparcours = *listeMsg;
-   printf("writeNewMsg: %s, %ld\n", m->contenu, m->date);
    //start from the beginning
    while(listeparcours != NULL && (m->date > date)) {
     if (strcmp(m->auteur,auteur)==0) {
@@ -52,7 +43,8 @@ char* writeNewMsg(liste_message* listeMsg, int idSocket, char* auteur, long date
     if (listeparcours !=NULL )
         m = listeparcours->me;
    } 
-   return messages;
+   free(msg);
+   free(time);
 }
 
 liste_client creer_liste_client ()
@@ -68,7 +60,6 @@ void insertListeClient (liste_client* listeClient, client c ) {
 }
 
 client findClient(liste_client listeClient, char* pseudo ) {
-   //start from the beginning
    while(listeClient != NULL) {
     client personne = listeClient->cl;
     printf("find client : %s\n", personne->pseudo);
@@ -80,8 +71,9 @@ client findClient(liste_client listeClient, char* pseudo ) {
    return NULL;
 }
 
+
+// a utiliser si on veut reconnaître les clients depuis leur adresse ip
 client findClientfromAddr(liste_client listeClient, struct sockaddr_in adresse ) {
-   //start from the beginning
    while(listeClient != NULL) {
     client personne = listeClient->cl;
     if (personne->addr.sin_addr.s_addr == adresse.sin_addr.s_addr) {
@@ -94,7 +86,6 @@ client findClientfromAddr(liste_client listeClient, struct sockaddr_in adresse )
 
 
 liste_client findSubscribers(liste_client listeClient, char* pseudo ) {
-   //start from the beginning
    while(listeClient != NULL) {
     client personne = listeClient->cl;
     if (personne->pseudo == pseudo) {
@@ -106,7 +97,6 @@ liste_client findSubscribers(liste_client listeClient, char* pseudo ) {
 }
 
 liste_client findSubscriptions(liste_client listeClient, char* pseudo ) {
-   //start from the beginning
    while(listeClient != NULL) {
     client personne = listeClient->cl;
     if (personne->pseudo == pseudo) {

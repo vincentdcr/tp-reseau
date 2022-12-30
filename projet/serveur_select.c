@@ -99,10 +99,9 @@ void serveur_appli(char *service)
     //===== Flash (comm. client/serveur) =====
 
 	/* Initialisation des descripteurs de fichiers. */
-	fd_set active_fd_set;
+	fd_set active_fd_set, read_fd_set;
   	FD_ZERO (&active_fd_set);
   	FD_SET (IDsocket_passif, &active_fd_set);	
-	fcntl(IDsocket_passif, F_SETFL, fcntl(IDsocket_passif, F_GETFL, 0) | O_NONBLOCK); //on rend le socket non-bloquant
 
 	/* Initialisation des buffers */
 	char * buffer = malloc(sizeof(char)*BUFFER_SIZE);
@@ -118,125 +117,139 @@ void serveur_appli(char *service)
 
 	client c = NULL;
 	client following;
+	
+	struct timeval delai = {10 , 0};
 
 	while (Flag)
     {
-      	/* Faire tourner le code pour chaque fd*/
-      	for (int i = 0; i < FD_SETSIZE; ++i) {
-			if (FD_ISSET (i, &active_fd_set))
-          	{
-				if (i == IDsocket_passif)
-				{ 
-					/* Requête de connexion sur le serveur*/
-					struct sockaddr_in addr_client;
-					socklen_t addr_client_size = sizeof(addr_client);
-					int IDsocket_client = accept(IDsocket_passif,(struct sockaddr *) &addr_client, &addr_client_size );
-					if (IDsocket_client >= 0) 
-					{
+      /* Select est bloquant pour quelques secondes avant que le délai expire */
+      read_fd_set = active_fd_set;
+      if (select (FD_SETSIZE, &read_fd_set, NULL, NULL, &delai) < 0)
+        {
+          perror ("select");
+          exit (EXIT_FAILURE);
+        } 
+      /* Faire tourner le code pour chaque fd avec une entrée en attente (récup depuis select)*/
+      for (int i = 0; i < FD_SETSIZE; ++i)
+        if (FD_ISSET (i, &read_fd_set))
+          {
+            if (i == IDsocket_passif)
+              { 
+                /* Requête de connexion sur le serveur*/
+				struct sockaddr_in addr_client;
+				socklen_t addr_client_size = sizeof(addr_client);
+                int IDsocket_client = accept(IDsocket_passif,(struct sockaddr *) &addr_client, &addr_client_size );
+                if (IDsocket_client < 0)
+                  {
+                    perror ("accept");
+                    exit (EXIT_FAILURE);
+                  }
+                FD_SET (IDsocket_client, &active_fd_set);
+				//c = findClientfromAddr(listeClients, addr_client);
+				write(IDsocket_client,"Enter pseudo (max 6 chars)", 27);
+  				if (read (IDsocket_client, buffer, BUFFER_SIZE) < 0)
+    			{
+      				/* Read error. */
+      				perror ("read");
+      				exit (EXIT_FAILURE);
+    			}
+				fcntl(IDsocket_client, F_SETFL, fcntl(IDsocket_client, F_GETFL, 0) | O_NONBLOCK); //on passe le fd en non-bloquant
+				char* pseudo = malloc(sizeof(char)*7);
+				pseudo = getName(buffer);
+				c = findClient(listeClients, pseudo);
+				if (c == NULL) {
+					printf("New client connecting : %s\n", pseudo);
+					client cli = (client) malloc(sizeof(client_s));
+					cli->pseudo = pseudo;
+					cli->derniersMsgLus = 0;
+					cli->addr = addr_client;
+					cli->abonnements = NULL;
+					cli->abonnes = NULL;
+					insertListeClient(&listeClients, cli);
+					insertConnectedClients(&listeConnected, cli, IDsocket_client);
+				} else {
+					printf("Returning client connecting : %s\n", pseudo);
+					insertConnectedClients(&listeConnected, c, IDsocket_client);
+					sprintf(buffer, "Welcome back %s", c->pseudo );
+					write(IDsocket_client, buffer, 14+strlen(c->pseudo));
+				}
+				write(IDsocket_client,"Entrer command (a,d,l,m,h,q) :", 31);
+              }
+            else
+              {
+				c = findConnectedClient(listeConnected, i);
+				printAllNewMessages(listeMsg, c, i);
+  				if (read (i, buffer, BUFFER_SIZE) < 0)
+    			{
+      				/* Read error. */
+      				perror ("read");
+      				exit (EXIT_FAILURE);
+    			}
+				/* Data read. */
+      			printf ("Server: got message: '%s' of length %ld\n", buffer, strlen(buffer));
+  				switch (buffer[0]) {
+					case 'a': {
+						argument = getArgument(buffer, TRUE);
+						following = findClient(listeClients, argument);
+						// si le pseudo existe et qu'on est pas déjà abonné
+						if (following != NULL && findClient(c->abonnements, argument)==NULL ) {
+							addSubscription(&c, &following); 
+							write(i, "Abonnement ajouté", 19);
+						} else 
+							write(i, "Cet abonné n'existe pas / déjà abonné", 42);
+						break;
+					}
+					case 'd': {
+						argument = getArgument(buffer, TRUE);
+						following = findClient(listeClients, argument);
+						// si le pseudo existe et qu'on est déjà abonné
+						if (following != NULL && findClient(c->abonnements, argument)!=NULL) {
+							removeSubscription(c, following); 
+							write(i, "Désabonnement confirmé", 25);
+						} else 
+							write(i, "Cet abonné n'existe pas / pas abonné", 25);
+						break;
+					}
+					case 'l': {
+						/* Meilleur affichage abonnements/abonnés : (marche pas tout a fait)
+						
+						char * listePseudos = getNamesFromListeClient(c->abonnements, TRUE);
+						write(i, listePseudos, strlen(listePseudos)+1); // pour le \0 final
 
-						FD_SET (IDsocket_client, &active_fd_set);
-						//c = findClientfromAddr(listeClients, addr_client);
-						write(IDsocket_client,"Enter pseudo (max 6 chars)", 27);
-						if (read (IDsocket_client, buffer, BUFFER_SIZE) < 0)
-						{
-							/* Read error. */
-							perror ("read");
-							exit (EXIT_FAILURE);
-						}
-						fcntl(IDsocket_client, F_SETFL, fcntl(IDsocket_client, F_GETFL, 0) | O_NONBLOCK); //on passe le fd en non-bloquant
-						char* pseudo = malloc(sizeof(char)*7);
-						pseudo = getName(buffer);
-						c = findClient(listeClients, pseudo);
-						if (c == NULL) {
-							printf("New client connecting : %s\n", pseudo);
-							client cli = (client) malloc(sizeof(client_s));
-							cli->pseudo = pseudo;
-							cli->derniersMsgLus = 0;
-							cli->addr = addr_client;
-							cli->abonnements = NULL;
-							cli->abonnes = NULL;
-							insertListeClient(&listeClients, cli);
-							insertConnectedClients(&listeConnected, cli, IDsocket_client);
-						} else {
-							printf("Returning client connecting : %s\n", pseudo);
-							insertConnectedClients(&listeConnected, c, IDsocket_client);
-							sprintf(buffer, "Welcome back %s", c->pseudo );
-							write(IDsocket_client, buffer, 14+strlen(c->pseudo));
-						}
-						write(IDsocket_client,"Entrer command (a,d,l,m,h,q) :", 31);
+						listePseudos = getNamesFromListeClient(c->abonnes, FALSE);
+						write(i, listePseudos, strlen(listePseudos)+1); // pour le \0 final */
+						char * listePseudos = getNamesFromListeClient(c->abonnements);
+						write(i, listePseudos, strlen(listePseudos)+1); // pour le \0 final
+						break;
+					}
+					case 'm': {
+						argument = getArgument(buffer, FALSE);
+						message m = (message) malloc(sizeof(message_s));
+						m->contenu = argument;
+						m->taille_contenu = strlen(argument);
+						m->date = time(NULL);
+						m->auteur = c->pseudo; 
+						insertListeMsg(&listeMsg,m);
+						write(i, "Message ajouté", 25);
+						break;
+					}
+					case 'h': {
+						write(i,"Commandes :\na <pseudo> : s'abonner\nd <pseudo> : se désabonner\nl : lister abo\nm <msg> : ecrire msg\nh : aide comm.\nq : quitter\n", 127);
+						break;
+					}
+					case 'q': {	
+						close(i);
+						FD_CLR (i, &active_fd_set);
+						rmConnectedClient(&listeConnected, i);
+    					//Flag = 0;
+						break;
 					}
 				}
-				else
-				{
-					c = findConnectedClient(listeConnected, i);
+				if (buffer[0]!='q') //empêche de "lire" des msg alors que le client n'ecoute plus
 					printAllNewMessages(listeMsg, c, i);
-					if (read (i, buffer, BUFFER_SIZE) > 0)
-					{
-						/* Data read. */
-						printf ("Server: got message: '%s' of length %ld\n", buffer, strlen(buffer));
-						switch (buffer[0]) {
-							case 'a': {
-								argument = getArgument(buffer, TRUE);
-								following = findClient(listeClients, argument);
-								// si le pseudo existe et qu'on est pas déjà abonné
-								if (following != NULL && findClient(c->abonnements, argument)==NULL ) {
-									addSubscription(&c, &following); 
-									write(i, "Abonnement ajouté", 19);
-								} else 
-									write(i, "Cet abonné n'existe pas / déjà abonné", 42);
-								break;
-							}
-							case 'd': {
-								argument = getArgument(buffer, TRUE);
-								following = findClient(listeClients, argument);
-								// si le pseudo existe et qu'on est déjà abonné
-								if (following != NULL && findClient(c->abonnements, argument)!=NULL) {
-									removeSubscription(c, following); 
-									write(i, "Désabonnement confirmé", 25);
-								} else 
-									write(i, "Cet abonné n'existe pas / pas abonné", 25);
-								break;
-							}
-							case 'l': {
-								/* Meilleur affichage abonnements/abonnés : (marche pas tout a fait)
-								
-								char * listePseudos = getNamesFromListeClient(c->abonnements, TRUE);
-								write(i, listePseudos, strlen(listePseudos)+1); // pour le \0 final
-
-								listePseudos = getNamesFromListeClient(c->abonnes, FALSE);
-								write(i, listePseudos, strlen(listePseudos)+1); // pour le \0 final */
-								char * listePseudos = getNamesFromListeClient(c->abonnements);
-								write(i, listePseudos, strlen(listePseudos)+1); // pour le \0 final
-								break;
-							}
-							case 'm': {
-								argument = getArgument(buffer, FALSE);
-								message m = (message) malloc(sizeof(message_s));
-								m->contenu = argument;
-								m->taille_contenu = strlen(argument);
-								m->date = time(NULL);
-								m->auteur = c->pseudo; 
-								insertListeMsg(&listeMsg,m);
-								write(i, "Message ajouté", 25);
-								break;
-							}
-							case 'h': {
-								write(i,"Commandes :\na <pseudo> : s'abonner\nd <pseudo> : se désabonner\nl : lister abo\nm <msg> : ecrire msg\nh : aide comm.\nq : quitter\n", 127);
-								break;
-							}
-							case 'q': {	
-								close(i);
-								FD_CLR (i, &active_fd_set);
-								rmConnectedClient(&listeConnected, i);
-								//Flag = 0;
-								break;
-							}
-						}
-						write(i,"Entrer command (a,d,l,m,h,q) :", 31);
-					}	
-				}
-			}
-        }
+				write(i,"Entrer command (a,d,l,m,h,q) :", 330);
+              }
+          }
     }
 	
     /*===== Fermeture de la connexion =====*/

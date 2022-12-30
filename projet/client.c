@@ -81,8 +81,8 @@ void client_appli(char *serveur, char *service)
 
 	struct sockaddr_in p_adr_socket;
 
-	p_adr_socket.sin_family = AF_INET;
-	p_adr_socket.sin_port = htons(atoi(service)); // use some unused port number
+	p_adr_socket.sin_family = AF_INET;  //IPv4
+	p_adr_socket.sin_port = htons(atoi(service)); // on utilise le port qu'on a récupérée en argument
 	p_adr_socket.sin_addr.s_addr = INADDR_ANY;
 	// Demande de connexion au serveur
 	if (connect(id_client_socket, (struct sockaddr *)&p_adr_socket, sizeof(p_adr_socket)) < 0)
@@ -92,31 +92,34 @@ void client_appli(char *serveur, char *service)
 	}
 	/*===== Service msg Flash (comm. client/serveur) =====*/
 
-	/* Initialize the set of active sockets. */
+	/* Initialisation des descripteurs de fichiers. */
 	fd_set active_fd_set, read_fd_set, write_fd_set;
 	FD_ZERO(&active_fd_set);
 	FD_SET(STDIN_FILENO, &active_fd_set);
 	FD_SET(id_client_socket, &active_fd_set);
+	fcntl(id_client_socket, F_SETFL, fcntl(id_client_socket, F_GETFL, 0) | O_NONBLOCK); //on passe le fd en non-bloquant
+	fcntl(STDIN_FILENO, F_SETFL, fcntl(STDIN_FILENO, F_GETFL, 0) | O_NONBLOCK);	  //pour avoir un client interactif
 
+	/* Initialisation des buffers */
 	char *read_server = malloc(sizeof(char) * BUFFER_SIZE);
 	char *read_client = malloc(sizeof(char) * 27);
 	read_client[0] = '1';
+
 	struct timeval delai = {10, 0};
 
-	fcntl(id_client_socket, F_SETFL, O_NONBLOCK);
-	fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
 	while (read_client[0] != 'q')
 	{
-		/* Block until input arrives on one or more active sockets. */
+		/* Select est bloquant pour quelques secondes avant que le délai expire */
 		read_fd_set = active_fd_set;
 		if (select(id_client_socket+1, &read_fd_set, NULL, NULL, &delai) < 0)
 		{
 			perror("select");
 			exit(EXIT_FAILURE);
 		}
-		/* Service all the sockets with input pending. */
+		/* Faire tourner le code pour chaque fd avec une entrée en attente (récup depuis select)*/
 		if (FD_ISSET(STDIN_FILENO, &read_fd_set))
 		{
+			/* On lit sur l'entrée standard et on envoit au serveur (pas de scanf car bloquant)*/
 			int nbchar = read(STDIN_FILENO, read_client, 23); // command (1 char) + ' ' + argument (max 20) + '\n'
 			if (nbchar >=0)
 				read_client[nbchar] = '\0';
@@ -124,6 +127,7 @@ void client_appli(char *serveur, char *service)
 		}
 		if (FD_ISSET(id_client_socket, &read_fd_set))
 		{
+			/* On récup sur le fd du socket ce qu'a envoyé le serveur */
 			read(id_client_socket, read_server, BUFFER_SIZE);
 			printf("%s\n", read_server);
 		}

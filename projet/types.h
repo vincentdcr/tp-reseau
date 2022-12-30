@@ -43,7 +43,7 @@ liste_message creer_liste_messages ();
 void insertListeMsg (liste_message* listeMsg, message msg ) ;
 
 
-char* writeNewMsg(liste_message* listeMsg, int idSocket, char* auteur, long date ) ;
+void writeNewMsg(char * messages, liste_message* listeMsg, int idSocket, char* auteur, long date ) ;
 
 liste_client creer_liste_client ();
 
